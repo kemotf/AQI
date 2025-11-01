@@ -1,6 +1,6 @@
 blueprint:
   name: Calculate US EPA AQI and European AQI with Categories from PM2.5
-  description: Calculates US EPA AQI (with interpolation and category) and European AQI (with numeric and category) based on PM2.5.
+  description: Calculates US EPA AQI (with interpolation and category) and European AQI (numeric and category) based on PM2.5.
   domain: automation
   input:
     pm25_sensor:
@@ -14,7 +14,7 @@ trigger:
     entity_id: !input pm25_sensor
 
 variables:
-  pm25_value: "{{ states(!input.pm25_sensor) | float }}"
+  pm25_value: "{{ states(this.pm25_sensor) | float }}"
 
   # US EPA AQI linear interpolation calculation
   aqi_value: >
