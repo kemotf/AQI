@@ -1,0 +1,97 @@
+blueprint:
+  name: Calculate US EPA AQI and European AQI with Categories from PM2.5
+  description: Calculates US EPA AQI (with interpolation and category) and European AQI (with numeric and category) based on PM2.5.
+  domain: automation
+  input:
+    pm25_sensor:
+      name: PM2.5 Sensor
+      selector:
+        entity:
+          domain: sensor
+
+trigger:
+  - platform: state
+    entity_id: !input pm25_sensor
+
+variables:
+  pm25_value: "{{ states(!input.pm25_sensor) | float }}"
+
+  # US EPA AQI linear interpolation calculation
+  aqi_value: >
+    {%- set pm = pm25_value %}
+    {%- if pm <= 12.0 %}
+      {{ ((50 - 0) / (12.0 - 0)) * (pm - 0) + 0 | round(1) }}
+    {%- elif pm <= 35.4 %}
+      {{ ((100 - 51) / (35.4 - 12.1)) * (pm - 12.1) + 51 | round(1) }}
+    {%- elif pm <= 55.4 %}
+      {{ ((150 - 101) / (55.4 - 35.5)) * (pm - 35.5) + 101 | round(1) }}
+    {%- elif pm <= 150.4 %}
+      {{ ((200 - 151) / (150.4 - 55.5)) * (pm - 55.5) + 151 | round(1) }}
+    {%- elif pm <= 250.4 %}
+      {{ ((300 - 201) / (250.4 - 150.5)) * (pm - 150.5) + 201 | round(1) }}
+    {%- elif pm <= 350.4 %}
+      {{ ((400 - 301) / (350.4 - 250.5)) * (pm - 250.5) + 301 | round(1) }}
+    {%- else %}
+      {{ ((500 - 401) / (500.4 - 350.5)) * (pm - 350.5) + 401 | round(1) }}
+    {%- endif %}
+
+  # US EPA AQI category assignment using interpolation result
+  aqi_category: >
+    {%- set aqi = aqi_value | float %}
+    {%- if aqi <= 50 %}
+      "Good"
+    {%- elif aqi <= 100 %}
+      "Moderate"
+    {%- elif aqi <= 150 %}
+      "Unhealthy for Sensitive Groups"
+    {%- elif aqi <= 200 %}
+      "Unhealthy"
+    {%- elif aqi <= 300 %}
+      "Very Unhealthy"
+    {%- elif aqi <= 400 %}
+      "Hazardous"
+    {%- else %}
+      "Hazardous (Emergency)"
+    {%- endif %}
+
+  # European AQI numeric calculation using linear interpolation
+  eaqi_value: >
+    {%- set pm = pm25_value %}
+    {%- if pm <= 5 %}
+      {{ (pm / 5 * 50) | round(1) }}
+    {%- elif pm <= 15 %}
+      {{ (50 + (pm - 5) / (15 - 5) * (100 - 50)) | round(1) }}
+    {%- elif pm <= 50 %}
+      {{ (100 + (pm - 15) / (50 - 15) * (150 - 100)) | round(1) }}
+    {%- elif pm <= 90 %}
+      {{ (150 + (pm - 50) / (90 - 50) * (200 - 150)) | round(1) }}
+    {%- elif pm <= 140 %}
+      {{ (200 + (pm - 90) / (140 - 90) * (300 - 200)) | round(1) }}
+    {%- else %}
+      {{ (300 + (pm - 140) / 200 * (400 - 300)) | round(1) }}
+    {%- endif %}
+
+  # European AQI category based on PM2.5 concentration breakpoints
+  eaqi_category: >
+    {%- set pm = pm25_value %}
+    {%- if pm <= 5 %}
+      "Good"
+    {%- elif pm <= 15 %}
+      "Fair"
+    {%- elif pm <= 50 %}
+      "Moderate"
+    {%- elif pm <= 90 %}
+      "Poor"
+    {%- elif pm <= 140 %}
+      "Very Poor"
+    {%- else %}
+      "Extremely Poor"
+    {%- endif %}
+
+action:
+  - service: notify.notify
+    data:
+      message: >
+        PM2.5: {{ pm25_value }} µg/m³,
+        US EPA AQI: {{ aqi_value }}, Category: {{ aqi_category }},
+        European AQI: {{ eaqi_value }}, Category: {{ eaqi_category }}
