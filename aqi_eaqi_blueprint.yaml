@@ -9,9 +9,9 @@ blueprint:
         entity:
           domain: sensor
 
-trigger:
-  - platform: state
-    entity_id: !input pm25_sensor
+triggers:
+  trigger: state
+  entity_id: !input pm25_sensor
 
 variables:
   pm25_value: "{{ states(this.pm25_sensor) | float }}"
